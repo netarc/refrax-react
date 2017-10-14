@@ -1,0 +1,70 @@
+{
+  "name": "refrax-react",
+  "version": "1.0.0",
+  "description": "React bindings for Refrax.",
+  "author": "Joshua Hollenbeck",
+  "license": "BSD-3-Clause",
+  "keywords": [
+    "refrax",
+    "model",
+    "react",
+    "react-component",
+    "reactive",
+    "data",
+    "data-flow"
+  ],
+  "bugs": "https://github.com/netarc/refrax-react/issues",
+  "files": [
+    "LICENSE",
+    "README.md",
+    "dist/",
+    "lib/"
+  ],
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "gulp",
+    "lint": "eslint ./src",
+    "test": "gulp test",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/netarc/refrax-react.git"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "babel": "^6.23.0",
+    "babel-core": "^6.25.0",
+    "babel-eslint": "^7.2.3",
+    "chai": "^4.0.2",
+    "del": "^1.2.0",
+    "enzyme": "^3.1.0",
+    "enzyme-adapter-react-16": "^1.0.1",
+    "eslint": "^4.2.0",
+    "eslint-plugin-react": "^7.1.0",
+    "fbjs-scripts": "^0.5.0",
+    "gulp": "^3.9.0",
+    "gulp-babel": "^5.1.0",
+    "gulp-derequire": "^2.1.0",
+    "gulp-flatten": "^0.1.0",
+    "gulp-header": "^1.2.2",
+    "gulp-mocha": "^4.3.1",
+    "gulp-sourcemaps": "1.6.0",
+    "gulp-util": "^3.0.6",
+    "jsdom": "^11.1.0",
+    "mocha": "~3.4.1",
+    "react": "^16.0.0",
+    "react-dom": "^16.0.0",
+    "react-test-renderer": "^16.0.0",
+    "refrax": "^0.6.1",
+    "run-sequence": "^1.1.2",
+    "sinon": "^1.10.3",
+    "source-map-support": "0.4.0",
+    "webpack": "1.11.0",
+    "webpack-stream": "^2.1.0"
+  },
+  "peerDependencies": {
+    "react": "^0.13.0 || ^0.14.0 || ^15.0.0 || ^16.0.0",
+    "refrax": "^0.6.1"
+  }
+}
