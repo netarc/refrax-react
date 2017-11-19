@@ -85,7 +85,8 @@ const paths = {
   src: [
     'src/**/*.ts',
     'src/**/*.tsx',
-    '!src/**/*.d.ts'
+    '!src/**/*.d.ts',
+    '!src/**/*.spec.ts'
   ],
   srcTest: [
     'src/**/*.ts',
