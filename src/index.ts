@@ -5,15 +5,11 @@
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
-import {
-  Tools as RefraxTools
-} from 'refrax';
+import PropTypes from './RefraxReactPropTypes';
+import Shims from './RefraxReactShims';
 
-
-const RefraxReactShims = {
-  getComponentParams: function() {
-    return RefraxTools.extend({}, this.props);
-  }
+export * from './createContainer';
+export {
+  PropTypes,
+  Shims
 };
-
-export default RefraxReactShims;

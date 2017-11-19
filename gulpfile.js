@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2015-present, Joshua Hollenbeck
+ * Copyright (c) 2017-present, Joshua Hollenbeck
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
@@ -8,18 +8,18 @@
 
 'use strict';
 
-var babel = require('gulp-babel')
-  , babelPluginDEV = require('fbjs-scripts/babel/dev-expression')
-  , del = require('del')
-  , derequire = require('gulp-derequire')
-  , flatten = require('gulp-flatten')
-  , gulp = require('gulp')
-  , gulpUtil = require('gulp-util')
-  , header = require('gulp-header')
-  , runSequence = require('run-sequence')
-  , webpackStream = require('webpack-stream')
-  , sourcemaps = require('gulp-sourcemaps')
-  , mocha = require('gulp-mocha');
+const babel = require('gulp-babel');
+const babelPluginDEV = require('./scripts/dev-expression');
+const del = require('del');
+const derequire = require('gulp-derequire');
+const gulp = require('gulp');
+const gulpUtil = require('gulp-util');
+const header = require('gulp-header');
+const runSequence = require('run-sequence');
+const webpackStream = require('webpack-stream');
+const sourcemaps = require('gulp-sourcemaps');
+const mocha = require('gulp-mocha');
+const ts = require('gulp-typescript');
 
 const HEADER = [
   '/**',
@@ -33,37 +33,24 @@ const HEADER = [
   ' */'
 ].join('\n') + '\n';
 
-const babelOpts = {
-  nonStandard: true,
-  loose: [
-    'es6.classes'
-  ],
-  stage: 1,
-  // optional: ['runtime'],
-  plugins: [
-    babelPluginDEV
-  ]
-};
-
-const buildDist = function(opts) {
+const buildDist = (opts) => {
   var webpackOpts = {
-    debug: opts.debug,
-    externals: {
-      'react': 'react',
-      'refrax': 'refrax'
-    },
+    externals: /^[-\/a-zA-Z0-9]+$/,
     output: {
       filename: opts.output,
       libraryTarget: 'umd',
-      library: 'Refrax'
+      library: 'RefraxReact'
     },
     plugins: [
+      new webpackStream.webpack.LoaderOptionsPlugin({
+        debug: opts.debug
+      }),
       new webpackStream.webpack.DefinePlugin({
         'process.env.NODE_ENV': JSON.stringify(
           opts.debug ? 'development' : 'production'
         )
       }),
-      new webpackStream.webpack.optimize.OccurenceOrderPlugin(),
+      new webpackStream.webpack.optimize.OccurrenceOrderPlugin(),
       new webpackStream.webpack.optimize.DedupePlugin()
     ]
   };
@@ -78,14 +65,14 @@ const buildDist = function(opts) {
       })
     );
   }
-  return webpackStream(webpackOpts, null, function(err, stats) {
+  return webpackStream(webpackOpts, null, (err, stats) => {
     if (err) {
       throw new gulpUtil.PluginError('webpack', err);
     }
     if (stats.compilation.errors.length) {
       throw new gulpUtil.PluginError('webpack', stats.toString());
     }
-  }).on('error', function(error) {
+  }).on('error', (error) => {
     gulpUtil.log(gulpUtil.colors.red('JS Compile Error: '), error.message);
   });
 };
@@ -96,26 +83,34 @@ const paths = {
   test: 'test',
   entry: 'lib/index.js',
   src: [
-    '*src/**/*.js',
-    '!src/**/__tests__/**/*.js'
+    'src/**/*.ts',
+    'src/**/*.tsx',
+    '!src/**/*.d.ts'
   ],
   srcTest: [
-    '*scripts/*.js',
-    '*src/**/*.js'
+    'src/**/*.ts',
+    'src/**/*.tsx',
+    'scripts/**/*.ts',
+    '!src/**/*.d.ts'
   ]
 };
 
 gulp.task('clean', function(cb) {
-  del([paths.dist, paths.lib, paths.test], cb);
+  return del([paths.dist, paths.lib, paths.test], cb);
 });
 
 gulp.task('modules', function() {
   return gulp
     .src(paths.src)
-    .pipe(babel(babelOpts).on('error', function(error) {
-      gulpUtil.log(gulpUtil.colors.red('Babel Error: '), error.message);
+    .pipe(ts.createProject('tsconfig.json', {
+      declaration: true
+    })())
+    .pipe(babel({
+      ignore: ['*.d.ts'],
+      plugins: [
+        babelPluginDEV
+      ]
     }))
-    .pipe(flatten())
     .pipe(gulp.dest(paths.lib));
 });
 
@@ -123,22 +118,29 @@ gulp.task('modules-test', function() {
   return gulp
     .src(paths.srcTest)
     .pipe(sourcemaps.init())
-    .pipe(babel(babelOpts).on('error', function(error) {
-      gulpUtil.log(gulpUtil.colors.red('Babel Error: '), error.message);
+    .pipe(ts.createProject('tsconfig.json', {
+      declaration: false
+    })())
+    .pipe(babel({
+      plugins: [
+        babelPluginDEV,
+        ['babel-plugin-module-resolver', {
+          alias: {
+            'test': './test/test'
+          }
+        }]
+      ]
     }))
-    .pipe(flatten())
-    // NOTE: this is somewhat of a hack so mocha will load source maps
-    .pipe(header("require('source-map-support').install();\n"))
-    .pipe(sourcemaps.write({sourceRoot: ''}))
-    .pipe(gulp.dest('test'));
+    .pipe(sourcemaps.write({ sourceRoot: '/src' }))
+    .pipe(gulp.dest(paths.test));
 });
 
-gulp.task('dist', ['modules'], function() {
+gulp.task('dist', function() {
   var distOpts = {
     debug: true,
-    output: 'refrax.js'
+    output: 'refrax-react.js'
   };
-  gulp.src(paths.entry)
+  return gulp.src(paths.entry)
     .pipe(buildDist(distOpts))
     .pipe(derequire())
     .pipe(header(HEADER, {
@@ -147,12 +149,12 @@ gulp.task('dist', ['modules'], function() {
     .pipe(gulp.dest(paths.dist));
 });
 
-gulp.task('dist:min', ['modules'], function() {
+gulp.task('dist:min', function() {
   var distOpts = {
     debug: false,
-    output: 'refrax.min.js'
+    output: 'refrax-react.min.js'
   };
-  gulp.src(paths.entry)
+  return gulp.src(paths.entry)
     .pipe(buildDist(distOpts))
     .pipe(header(HEADER, {
       version: process.env.npm_package_version
@@ -160,19 +162,18 @@ gulp.task('dist:min', ['modules'], function() {
     .pipe(gulp.dest(paths.dist));
 });
 
-gulp.task('testMocha', ['modules-test'], function() {
+gulp.task('testMocha', function() {
   gulp
     .src([
-      'test/*.spec.js'
+      'test/**/*.spec.js'
     ], {read: false})
-    .pipe(header("require('source-map-support').install();\n"))
     .pipe(
       mocha({
         require: [
-          'test/ChaiDeepMatch.js',
-          'test/TestSupport.js'
+          'test/test/ChaiDeepMatch.js',
+          'test/test/TestSupport.js'
         ],
-        reporter: 'scripts/Reporter.js'
+        // reporter: 'scripts/test/Reporter.js'
       })
         .on('error', function(error) {
           this.emit('end');
@@ -180,14 +181,10 @@ gulp.task('testMocha', ['modules-test'], function() {
     );
 });
 
-gulp.task('watch', function() {
-  gulp.watch(paths.src, ['modules']);
-});
-
 gulp.task('test', function(cb) {
-  runSequence('clean', 'testMocha', cb);
+  runSequence('clean', 'modules-test', 'testMocha', cb);
 });
 
 gulp.task('default', function(cb) {
-  runSequence('clean', ['dist', 'dist:min'], cb);
+  runSequence('clean', 'modules', ['dist', 'dist:min'], cb);
 });

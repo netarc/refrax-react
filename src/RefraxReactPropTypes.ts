@@ -6,13 +6,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 import {
-  ActionEntity as RefraxActionEntity,
-  Resource as RefraxResource
+  ActionEntity,
+  Resource,
+  Constants
 } from 'refrax';
 
-
-const RefraxReactPropTypes = {
-  resource(props, propName, componentName) {
+export default {
+  resource(props: Constants.IKeyValue, propName: string, componentName: string) {
     const resource = props[propName];
 
     if (resource == null) {
@@ -20,15 +20,15 @@ const RefraxReactPropTypes = {
         'Required prop `' + propName + '` was not specified in `' + componentName + '`.'
       );
     }
-    else if (!(resource instanceof RefraxResource)) {
+    else if (!(resource instanceof Resource)) {
       return new Error(
-        'Invalid prop `' + propName + '` supplied to `' + componentName + '`, expected a RefraxResource.',
+        'Invalid prop `' + propName + '` supplied to `' + componentName + '`, expected a Resource.'
       );
     }
     return null;
   },
 
-  action(props, propName, componentName) {
+  action(props: Constants.IKeyValue, propName: string, componentName: string) {
     const resource = props[propName];
 
     if (resource == null) {
@@ -36,13 +36,11 @@ const RefraxReactPropTypes = {
         'Required prop `' + propName + '` was not specified in `' + componentName + '`.'
       );
     }
-    else if (!(resource instanceof RefraxActionEntity)) {
+    else if (!(resource instanceof ActionEntity)) {
       return new Error(
-        'Invalid prop `' + propName + '` supplied to `' + componentName + '`, expected a RefraxAction.',
+        'Invalid prop `' + propName + '` supplied to `' + componentName + '`, expected a Action.'
       );
     }
     return null;
   }
 };
-
-export default RefraxReactPropTypes;
