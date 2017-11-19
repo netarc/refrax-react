@@ -32,7 +32,7 @@ import {
   createSchema,
   CompoundDisposable
 } from 'refrax';
-import { createContainer, IReactContainer } from '../createContainer';
+import { createContainer, IReactContainer, IRefraxInitResult } from '../createContainer';
 
 let schema: Schema;
 
@@ -61,7 +61,10 @@ const actionUpdateUser = createAction(function(data) {
     .update(data);
 });
 
-class TestComponent extends React.Component<{ refrax: object }> {
+class TestComponent extends React.Component<{
+  [key: string]: any;
+  refrax?: IRefraxInitResult;
+}> {
   _renderPasses: RefraxConstants.IKeyValue[];
 
   // Place holders so we can spy into them
@@ -87,7 +90,7 @@ class TestComponent extends React.Component<{ refrax: object }> {
   }
 }
 
-const TestComponentContainer = createContainer(TestComponent, function() {
+const TestComponentContainer = createContainer(TestComponent, function(): IRefraxInitResult {
   return this.props.refrax || {};
 });
 
@@ -178,7 +181,7 @@ describe('RefraxContainer', function() {
         refrax: {
           users: schema.users
         }
-      } as object, null));
+      }, null));
       const wrapperIC_Container = wrapper.instance().refs.component as IReactContainer;
       const wrapperIC_Component = wrapper.instance().refs.component as TestComponent;
 
@@ -259,7 +262,7 @@ describe('RefraxContainer', function() {
         refrax: {
           user: schema.users.user
         }
-      } as object, null));
+      }, null));
       const wrapperIC_Component = wrapper.instance().refs.component as TestComponent;
 
       const userAttachment = wrapper.instance().state.attachments.user;
@@ -281,7 +284,7 @@ describe('RefraxContainer', function() {
         refrax: {
           user: schema.users.user.withParams({ userId: 2 })
         }
-      } as object, null));
+      }, null));
       const wrapperIC_Component = wrapper.instance().refs.component as TestComponent;
 
       const userAttachment = wrapper.instance().state.attachments.user;
@@ -304,7 +307,7 @@ describe('RefraxContainer', function() {
         refrax: {
           user: schema.users.user.withParams({ userId: 2 })
         }
-      } as object, null));
+      }, null));
       const wrapperIC_Component = wrapper.instance().refs.component as TestComponent;
 
       const userAttachment = wrapper.instance().state.attachments.user;
@@ -329,7 +332,7 @@ describe('RefraxContainer', function() {
         refrax: {
           users: schema.users
         }
-      } as object, null));
+      }, null));
       const wrapperIC_Component = wrapper.instance().refs.component as TestComponent;
       const wrapperIC_Container = wrapper.instance().refs.component as IReactContainer;
 
@@ -428,7 +431,7 @@ describe('RefraxContainer', function() {
         refrax: {
           createUser: actionCreateUser
         }
-      } as object, null));
+      }, null));
 
       expect(wrapper.instance().state.attachments)
         .to.have.all.keys([
@@ -459,7 +462,7 @@ describe('RefraxContainer', function() {
           refrax: {
             createUser: actionCreateUser
           }
-        } as object, null));
+        }, null));
 
         expect(wrapper.instance().state.attachments)
           .to.have.all.keys([
@@ -520,12 +523,12 @@ describe('RefraxContainer', function() {
           refrax: {
             users: schema.users
           }
-        } as object, null));
+        }, null));
         const wrapperAction = mount(React.createElement(TestComponentContainer, {
           refrax: {
             createUser: actionCreateUser
           }
-        } as object, null));
+        }, null));
         const wrapperIC_Resource_Component = wrapperResource.instance().refs.component as TestComponent;
         const wrapperIC_Action_Component = wrapperAction.instance().refs.component as TestComponent;
         const usersAttachment = wrapperResource.instance().state.attachments.users;
@@ -669,13 +672,13 @@ describe('RefraxContainer', function() {
         refrax: {
           users: schema.users
         }
-      } as object, null));
+      }, null));
       const wrapperAction = mount(React.createElement(TestComponentContainer, {
         userId: 1,
         refrax: {
           updateUser: actionUpdateUser
         }
-      } as object, null));
+      }, null));
       const wrapperIC_Resource_Component = wrapperResource.instance().refs.component as TestComponent;
       const usersAttachment = wrapperResource.instance().state.attachments.users;
       const updateUserAction = wrapperAction.instance().state.attachments.updateUser;
@@ -723,12 +726,12 @@ describe('RefraxContainer', function() {
         refrax: {
           users: schema.users
         }
-      } as object, null));
+      }, null));
       const wrapperAction = mount(React.createElement(TestComponentContainer, {
         refrax: {
           updateUser: actionUpdateUser.withParams({ userId: 1 })
         }
-      } as object, null));
+      }, null));
       const wrapperIC_Resource_Component = wrapperResource.instance().refs.component as TestComponent;
       const usersAttachment = wrapperResource.instance().state.attachments.users;
       const updateUserAction = wrapperAction.instance().state.attachments.updateUser;
@@ -777,13 +780,13 @@ describe('RefraxContainer', function() {
         refrax: {
           users: schema.users
         }
-      } as object, null));
+      }, null));
       const wrapperAction = mount(React.createElement(TestComponentContainer, {
         userId: 2,
         refrax: {
           updateUser: actionUpdateUser.withParams({ userId: 1 })
         }
-      } as object, null));
+      }, null));
       const wrapperIC_Resource_Component = wrapperResource.instance().refs.component as TestComponent;
       const usersAttachment = wrapperResource.instance().state.attachments.users;
       const updateUserAction = wrapperAction.instance().state.attachments.updateUser;

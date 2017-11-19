@@ -205,27 +205,6 @@ function isReactComponent(component: any) {
   );
 }
 
-/*
-function inherits(subClass: any, superClass: any) {
-  if (typeof superClass !== 'function' && superClass !== null) {
-    throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass);
-  }
-
-  subClass.prototype = Object.create(superClass && superClass.prototype, {
-    constructor: {
-      value: subClass,
-      enumerable: false,
-      writable: true,
-      configurable: true
-    }
-  });
-
-  if (superClass) {
-    RefraxTools.setPrototypeOf(subClass, superClass);
-  }
-}
-*/
-
 function refraxify<P>(
   component: ComponentClass<P & IRefraxContainerChildProps>
 ): ComponentClass<P & IRefraxContainerChildProps> {
@@ -260,12 +239,16 @@ export interface IRefraxContainerState {
   attachments: Constants.IKeyValue;
 }
 
-export type RefraxInitHook<P> = (this: IReactContainer<P>) => object;
+export interface IRefraxInitResult {
+  [key: string]: RefraxSchemaPath | IAction;
+}
+
+export type RefraxInitHook<P> = (this: IReactContainer<P>) => IRefraxInitResult;
 
 function _createContainer<P>(
   component: ComponentClass<P> | SFC<P>,
   initHook?: RefraxInitHook<P & IRefraxContainerChildProps>
-): ComponentClass {
+): ComponentClass<P> {
   let componentAsClass: ComponentClass<P & IRefraxContainerChildProps>;
   let componentAsSFC: SFC<P & IRefraxContainerChildProps>;
 
@@ -279,7 +262,7 @@ function _createContainer<P>(
   const componentName = (component as any).displayName || (component as any).name;
   const containerName = 'Refrax(' + componentName + ')';
 
-  class RefraxContainer extends ReactComponent<P & {}, IRefraxContainerState> implements IReactContainer {
+  class RefraxContainer extends ReactComponent<P, IRefraxContainerState> implements IReactContainer {
     mounted: boolean;
     _disposable: CompoundDisposable;
     _resources: Resource[];
@@ -400,11 +383,11 @@ function _createContainer<P>(
   return RefraxContainer;
 }
 
-export function createContainer<P>(element: ComponentClass<P>): ComponentClass;
-export function createContainer<P>(element: SFC<P>): ComponentClass;
-export function createContainer<P>(element: ComponentClass<P>, hook?: RefraxInitHook<P & IRefraxContainerChildProps>): ComponentClass;
-export function createContainer<P>(element: SFC<P>, hook?: RefraxInitHook<P & IRefraxContainerChildProps>): ComponentClass;
-export function createContainer<P>(element: ComponentClass<P> | SFC<P>, hook?: RefraxInitHook<P & IRefraxContainerChildProps>): ComponentClass {
+export function createContainer<P>(element: ComponentClass<P>): ComponentClass<P>;
+export function createContainer<P>(element: SFC<P>): ComponentClass<P>;
+export function createContainer<P>(element: ComponentClass<P>, hook?: RefraxInitHook<P & IRefraxContainerChildProps>): ComponentClass<P>;
+export function createContainer<P>(element: SFC<P>, hook?: RefraxInitHook<P & IRefraxContainerChildProps>): ComponentClass<P>;
+export function createContainer<P>(element: ComponentClass<P> | SFC<P>, hook?: RefraxInitHook<P & IRefraxContainerChildProps>): ComponentClass<P> {
   invariant(isReactComponent(element),
     `invalid argument; expected React Component or Pure Render Function but found \`${element}\``
   );
