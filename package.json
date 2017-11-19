@@ -1,6 +1,6 @@
 {
   "name": "refrax-react",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "React bindings for Refrax.",
   "author": "Joshua Hollenbeck",
   "license": "BSD-3-Clause",
