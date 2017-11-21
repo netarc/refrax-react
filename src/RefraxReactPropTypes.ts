@@ -7,40 +7,42 @@
  */
 import {
   ActionEntity,
-  Resource,
-  Constants
+  Constants,
+  Resource
 } from 'refrax';
 
 export default {
-  resource(props: Constants.IKeyValue, propName: string, componentName: string) {
+  resource(props: Constants.IKeyValue, propName: string, componentName: string): Error | null {
     const resource = props[propName];
 
     if (resource == null) {
       return new Error(
-        'Required prop `' + propName + '` was not specified in `' + componentName + '`.'
+        `Required prop \`${propName}\` was not specified in \`${componentName}\`.`
       );
     }
     else if (!(resource instanceof Resource)) {
       return new Error(
-        'Invalid prop `' + propName + '` supplied to `' + componentName + '`, expected a Resource.'
+        `Invalid prop \`${propName}\` supplied to \`${componentName}\`, expected a Resource.`
       );
     }
+
     return null;
   },
 
-  action(props: Constants.IKeyValue, propName: string, componentName: string) {
+  action(props: Constants.IKeyValue, propName: string, componentName: string): Error | null {
     const resource = props[propName];
 
     if (resource == null) {
       return new Error(
-        'Required prop `' + propName + '` was not specified in `' + componentName + '`.'
+        `Required prop \`${propName}\` was not specified in \`${componentName}\`.`
       );
     }
     else if (!(resource instanceof ActionEntity)) {
       return new Error(
-        'Invalid prop `' + propName + '` supplied to `' + componentName + '`, expected a Action.'
+        `Invalid prop \`${propName}\` supplied to \`${componentName}\`, expected a Action.`
       );
     }
+
     return null;
   }
 };

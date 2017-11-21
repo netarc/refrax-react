@@ -5,26 +5,31 @@
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
-import { Component as ReactComponent, SFC, ComponentClass } from 'react';
-import * as React from 'react';
+import {
+  Component as ReactComponent,
+  ComponentClass,
+  createElement,
+  SFC
+} from 'react';
 import {
   ActionEntity,
+  CompoundDisposable,
+  Constants,
+  Disposable,
+  IAction,
   RefraxParameters,
   Resource,
-  Tools as RefraxTools,
-  SchemaPath as RefraxSchemaPath,
-  Disposable,
-  CompoundDisposable,
-  Constants
+  SchemaPath,
+  SchemaPathClass,
+  Tools as RefraxTools
 } from 'refrax';
-import { IAction } from 'refrax/lib/actions/action';
-import { SchemaPathClass } from 'refrax/lib/schema/path';
 
 import RefraxReactShims from './RefraxReactShims';
 
-const { invariant } = RefraxTools;
+const invariant = RefraxTools.invariant;
 
 export interface IReactContainer<P = {}> extends ReactComponent<P> {
+  _mounted: boolean;
   _disposable: CompoundDisposable;
   _resources: any[];
   _actions: any[];
@@ -44,23 +49,23 @@ interface IRefPoolEntry {
   srcAction: IAction;
   components: ReactComponent[];
 }
-const RefPool: { [s: string]: IRefPoolEntry; } = {};
+const RefPool: { [s: string]: IRefPoolEntry } = {};
 
-function detect(collection: Collection, targets: string[], predicate: BoolPredicate) {
-  return RefraxTools.any(collection, function(iteratee: any) {
+const detect = (collection: Collection, targets: string[], predicate: BoolPredicate) =>
+  RefraxTools.any(collection, (iteratee: any) => {
     if (targets && targets.length > 0 && targets.indexOf(iteratee) === -1) {
       return false;
     }
 
     return predicate(iteratee);
   });
-}
 
-function renderComponent(component: ReactComponent) {
+const renderComponent = (component: IReactContainer) => {
   component.setState({ lastUpdate: Date.now() });
-}
+};
 
-function renderDispatcherFor(component: ReactComponent) {
+const delayRenderDebounceTime = 2;
+const renderDispatcherFor = (component: IReactContainer) => {
   let timeout: NodeJS.Timer | null = null;
 
   return (debounced: boolean) => {
@@ -70,7 +75,7 @@ function renderDispatcherFor(component: ReactComponent) {
           if (timeout != null) {
             renderComponent(component);
           }
-        }, 2);
+        }, delayRenderDebounceTime);
       }
     }
     else {
@@ -79,12 +84,11 @@ function renderDispatcherFor(component: ReactComponent) {
       renderComponent(component);
     }
   };
-}
+};
 
-function attachAccessor(container: IReactContainer, accessor: any) {
-  const componentParams = () => {
-    return RefraxReactShims.getComponentParams.call(container);
-  };
+const attachAccessor = (container: IReactContainer, accessor: any) => {
+  const componentParams = () =>
+    RefraxReactShims.getComponentParams.call(container);
 
   const resource = new Resource(accessor,
     new RefraxParameters(componentParams).weakify()
@@ -96,17 +100,17 @@ function attachAccessor(container: IReactContainer, accessor: any) {
   RefraxTools.extend(container._paramsUsed, descriptor.pathParams, descriptor.queryParams);
 
   return resource;
-}
+};
 
 interface IReactAction extends IAction {
   attached?: boolean;
 }
 
-function attachAction(container: IReactContainer, action: IReactAction) {
-  let refLink: string
-    , refPool: IRefPoolEntry;
+const attachAction = (container: IReactContainer, action: IReactAction) => {
+  let refLink: string;
+  let refPool: IRefPoolEntry;
 
-  if (refLink = action._options['refLink']) {
+  if (refLink = action._options.refLink) {
     refPool = RefPool[refLink];
 
     if (!refPool) {
@@ -119,9 +123,7 @@ function attachAction(container: IReactContainer, action: IReactAction) {
 
     if (action !== refPool.srcAction) {
       throw new TypeError(
-        'attachAction cannot link different actions.\n\r' +
-        'found: ' + action + '\n\r' +
-        'expected: ' + refPool.srcAction
+        `attachAction cannot link different actions.\n\rfound: ${action}\n\rexpected: ${refPool.srcAction}`
       );
     }
 
@@ -137,19 +139,12 @@ function attachAction(container: IReactContainer, action: IReactAction) {
   }
   else {
     // Referencing an attached action (IE resource `default` to an attached resourced)
-    if (action.attached === true) {
-      action = action.clone();
-    }
-    else {
-      action = action.coextend();
-    }
+    action = action.attached === true ? action.clone() : action.coextend();
     action.attached = true;
   }
 
   action.setParams(
-    new RefraxParameters(() => {
-      return RefraxReactShims.getComponentParams.call(container);
-    }).weakify()
+    new RefraxParameters(() => RefraxReactShims.getComponentParams.call(container)).weakify()
   );
 
   // We delay-debounce since `mutated` can often fire along-side `start`/`finish`
@@ -161,30 +156,31 @@ function attachAction(container: IReactContainer, action: IReactAction) {
   });
 
   return action;
-}
+};
 
-function attach(this: IReactContainer, target: RefraxSchemaPath | IAction) {
+function attach(this: IReactContainer, target: SchemaPath | IAction): Resource | IAction | void {
   if (target instanceof SchemaPathClass) {
-    const resource = attachAccessor(this, target as RefraxSchemaPath);
+    const resource = attachAccessor(this, target as SchemaPath);
 
     this._resources.push(resource);
+
     return resource;
   }
   else if (target instanceof ActionEntity) {
     const action = attachAction(this, target as IAction);
 
     this._actions.push(action);
+
     return action;
   }
 
-  throw new TypeError('RefraxContainer::attach cannot attach invalid target `' + target + '`.');
+  invariant(false, `RefraxContainer::attach cannot attach invalid target \`${target}\`.`);
 }
 
-function isScalarAndEqual(valueA: any, valueB: any) {
-  return valueA === valueB && (valueA === null || typeof valueA !== 'object');
-}
+const isScalarAndEqual = (valueA: any, valueB: any) =>
+  valueA === valueB && (valueA === null || typeof valueA !== 'object');
 
-function paramsEqual(lastUsedParams: { [key: string]: any }, availableParams: { [key: string]: any }) {
+const paramsEqual = (lastUsedParams: { [key: string]: any }, availableParams: { [key: string]: any }) => {
   let key: string;
 
   for (key in lastUsedParams) {
@@ -194,40 +190,35 @@ function paramsEqual(lastUsedParams: { [key: string]: any }, availableParams: { 
   }
 
   return true;
-}
+};
 
-function isReactComponent(component: any) {
-  return !!(
+const isReactComponent = (component: any) =>
+  Boolean(
     component &&
     typeof component.prototype === 'object' &&
     component.prototype &&
     component.prototype.isReactComponent
   );
-}
 
-function refraxify<P>(
+const refraxify = <P extends {}>(
   component: ComponentClass<P & IRefraxContainerChildProps>
-): ComponentClass<P & IRefraxContainerChildProps> {
+): ComponentClass<P & IRefraxContainerChildProps> => {
   class RefraxComponent extends component {
-    isLoading = () => {
-      return this.props.refraxContainer.isLoading();
-    }
+    isLoading = () =>
+      this.props.refraxContainer.isLoading()
 
-    isPending = () => {
-      return this.props.refraxContainer.isPending();
-    }
+    isPending = () =>
+      this.props.refraxContainer.isPending()
 
-    hasData = () => {
-      return this.props.refraxContainer.hasData();
-    }
+    hasData = () =>
+      this.props.refraxContainer.hasData()
 
-    isStale = () => {
-      return this.props.refraxContainer.isStale();
-    }
+    isStale = () =>
+      this.props.refraxContainer.isStale()
   }
 
   return RefraxComponent;
-}
+};
 
 export interface IRefraxContainerChildProps {
   ref: string;
@@ -240,15 +231,15 @@ export interface IRefraxContainerState {
 }
 
 export interface IRefraxInitResult {
-  [key: string]: RefraxSchemaPath | IAction;
+  [key: string]: SchemaPath | IAction;
 }
 
 export type RefraxInitHook<P> = (this: IReactContainer<P>) => IRefraxInitResult;
 
-function _createContainer<P>(
+const _createContainer = <P extends {}>(
   component: ComponentClass<P> | SFC<P>,
   initHook?: RefraxInitHook<P & IRefraxContainerChildProps>
-): ComponentClass<P> {
+): ComponentClass<P> => {
   let componentAsClass: ComponentClass<P & IRefraxContainerChildProps>;
   let componentAsSFC: SFC<P & IRefraxContainerChildProps>;
 
@@ -260,10 +251,10 @@ function _createContainer<P>(
   }
 
   const componentName = (component as any).displayName || (component as any).name;
-  const containerName = 'Refrax(' + componentName + ')';
+  const containerName = `Refrax(${componentName})`;
 
   class RefraxContainer extends ReactComponent<P, IRefraxContainerState> implements IReactContainer {
-    mounted: boolean;
+    _mounted: boolean;
     _disposable: CompoundDisposable;
     _resources: Resource[];
     _actions: IAction[];
@@ -282,19 +273,78 @@ function _createContainer<P>(
       };
     }
 
-    _initialize() {
+    componentWillMount(): void {
+      this.setState(this.initialize());
+    }
+
+    componentWillUnmount(): void {
+      this.cleanup();
+      this._mounted = false;
+    }
+
+    componentWillReceiveProps(nextProps: object, maybeNextContext: any): void {
+      const availableParams = RefraxReactShims.getComponentParams.call({
+        props: nextProps,
+        context: maybeNextContext || this.context
+      });
+
+      // If we compare all params used by resources and detect a difference we need to re-init
+      if (!paramsEqual(this._paramsUsed, availableParams)) {
+        // @todo: The problem with a full cleanup and re-init is any binding done outside initHook
+        // will be lost
+        this.cleanup();
+        this.initialize();
+      }
+    }
+
+    // nextProps: object, nextState: object, nextContext: any
+    shouldComponentUpdate(): boolean {
+      // @todo: Do we need a prop/state check?
+      return true;
+    }
+
+    render(): React.ReactElement<any> {
+      return createElement(componentAsClass || componentAsSFC, {
+        // @ts-ignore Spread types bug - https://github.com/Microsoft/TypeScript/pull/13288
+        ...this.props,
+        ...this.state.attachments,
+        ref: 'component',
+        refraxContainer: this
+      });
+    }
+
+    isLoading(...targets: string[]): boolean {
+      return detect(this._resources, targets, (resource) => resource.isLoading()) ||
+        detect(this._actions, targets, (action) => action.isLoading());
+    }
+
+    isPending(...targets: string[]): boolean {
+      return detect(this._actions, targets, (action) => action.isPending());
+    }
+
+    hasData(...targets: string[]): boolean {
+      return !detect(this._resources, targets, (resource) => !resource.hasData()) &&
+        !detect(this._actions, targets, (action) => !action.hasData());
+    }
+
+    isStale(...targets: string[]): boolean {
+      return detect(this._resources, targets, (resource) => resource.isStale()) ||
+        detect(this._actions, targets, (action) => action.isStale());
+    }
+
+    private initialize(): { attachments: Constants.IKeyValue } {
       const result = initHook && initHook.call(this) || {};
-      const attachments: { [key: string]: RefraxSchemaPath | IAction } = {};
-      RefraxTools.each(result, (atachment: RefraxSchemaPath | IAction, key: string) => {
+      const attachments: { [key: string]: SchemaPath | IAction } = {};
+      RefraxTools.each(result, (atachment: SchemaPath | IAction, key: string) => {
         attachments[key] = attach.call(this, atachment);
       });
 
       return {
-        attachments: attachments
+        attachments
       };
     }
 
-    _cleanup() {
+    private cleanup(): void {
       this._disposable.dispose();
       this._disposable = new CompoundDisposable();
 
@@ -305,83 +355,15 @@ function _createContainer<P>(
       this._resources = [];
       this._actions = [];
     }
-
-    componentWillMount() {
-      this.setState(this._initialize());
-    }
-
-    componentWillUnmount() {
-      this._cleanup();
-      this.mounted = false;
-    }
-
-    componentWillReceiveProps(nextProps: object, maybeNextContext: any) {
-      const availableParams = RefraxReactShims.getComponentParams.call({
-        props: nextProps,
-        context: maybeNextContext || this.context
-      });
-
-      // If we compare all params used by resources and detect a difference we need to re-init
-      if (!paramsEqual(this._paramsUsed, availableParams)) {
-        // @todo: The problem with a full cleanup and re-init is any binding done outside initHook
-        // will be lost
-        this._cleanup();
-        this._initialize();
-      }
-    }
-
-    // nextProps: object, nextState: object, nextContext: any
-    shouldComponentUpdate() {
-      // @todo: Do we need a prop/state check?
-      return true;
-    }
-
-    render() {
-      return React.createElement(componentAsClass || componentAsSFC, {
-        // @ts-ignore Spread types bug - https://github.com/Microsoft/TypeScript/pull/13288
-        ...this.props,
-        ...this.state.attachments,
-        ref: 'component',
-        refraxContainer: this
-      });
-    }
-
-    isLoading(...targets: string[]) {
-      return detect(this._resources, targets, function(resource) {
-        return resource.isLoading();
-      }) || detect(this._actions, targets, function(action) {
-        return action.isLoading();
-      });
-    }
-
-    isPending(...targets: string[]) {
-      return detect(this._actions, targets, function(action) {
-        return action.isPending();
-      });
-    }
-
-    hasData(...targets: string[]) {
-      return !detect(this._resources, targets, function(resource) {
-        return !resource.hasData();
-      }) && !detect(this._actions, targets, function(action) {
-        return !action.hasData();
-      });
-    }
-
-    isStale(...targets: string[]) {
-      return detect(this._resources, targets, function(resource) {
-        return resource.isStale();
-      }) || detect(this._actions, targets, function(action) {
-        return action.isStale();
-      });
-    }
   }
 
   (RefraxContainer as ComponentClass).displayName = containerName;
   (RefraxContainer as ComponentClass).contextTypes = RefraxTools.extend({}, RefraxReactShims.contextTypes);
 
   return RefraxContainer;
-}
+};
+
+// tslint:disable: only-arrow-functions max-line-length
 
 export function createContainer<P>(element: ComponentClass<P>): ComponentClass<P>;
 export function createContainer<P>(element: SFC<P>): ComponentClass<P>;
