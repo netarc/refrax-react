@@ -4,12 +4,9 @@
     "tslint:all"
   ],
   "rules": {
-    // eslint rules
     "object-curly-spacing": [true, "always"],
 
-    // TODO: more strict?
     "no-any": false,
-
     "align": [true, "parameters", "statements", "members", "elements"],
     "comment-format": [true, "check-space"],
     "forin": false,

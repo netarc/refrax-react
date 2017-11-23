@@ -33,7 +33,8 @@ import {
   Schema,
   Tools as RefraxTools
 } from 'refrax';
-import { createContainer, IReactContainer, IRefraxInitResult } from '../createContainer';
+import { createContainer, IRefraxInitResult } from '../createContainer';
+import { RefraxContainerComponent } from '../RefraxComponent';
 
 // tslint:disable: no-magic-numbers
 
@@ -188,7 +189,7 @@ describe('RefraxContainer', () => {
           users: schema.users
         }
       }, null));
-      const wrapperIC_Container = wrapper.instance().refs.component as IReactContainer;
+      const wrapperIC_Container = wrapper.instance().refs.component as RefraxContainerComponent;
       const wrapperIC_Component = wrapper.instance().refs.component as TestComponent;
 
       expect(wrapper.instance().state.attachments)
@@ -340,7 +341,7 @@ describe('RefraxContainer', () => {
         }
       }, null));
       const wrapperIC_Component = wrapper.instance().refs.component as TestComponent;
-      const wrapperIC_Container = wrapper.instance().refs.component as IReactContainer;
+      const wrapperIC_Container = wrapper.instance().refs.component as RefraxContainerComponent;
 
       expect(wrapper.instance().state.attachments)
         .to.have.all.keys([

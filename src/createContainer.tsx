@@ -24,21 +24,27 @@ import {
   Tools as RefraxTools
 } from 'refrax';
 
+import {
+  RefraxComponentProps,
+  RefraxContainerComponent
+} from './RefraxComponent';
 import RefraxReactShims from './RefraxReactShims';
 
 const invariant = RefraxTools.invariant;
 
-export interface IReactContainer<P = {}> extends ReactComponent<P> {
+export interface IRefraxInitResult {
+  [key: string]: SchemaPath | IAction;
+}
+
+export type RefraxInitHook<P> = (this: RefraxContainerComponent<P>) => IRefraxInitResult;
+
+// Internal interface of our RefraxContainerComponent
+interface IRefraxContainerComponent extends RefraxContainerComponent {
   _mounted: boolean;
   _disposable: CompoundDisposable;
   _resources: any[];
   _actions: any[];
   _paramsUsed: object;
-
-  isLoading(...targets: string[]): boolean;
-  isPending(...targets: string[]): boolean;
-  hasData(...targets: string[]): boolean;
-  isStale(...targets: string[]): boolean;
 }
 
 type Collection = object | any[];
@@ -60,12 +66,14 @@ const detect = (collection: Collection, targets: string[], predicate: BoolPredic
     return predicate(iteratee);
   });
 
-const renderComponent = (component: IReactContainer) => {
-  component.setState({ lastUpdate: Date.now() });
+const renderComponent = (component: IRefraxContainerComponent) => {
+  if (component._mounted) {
+    component.setState({ lastUpdate: Date.now() });
+  }
 };
 
 const delayRenderDebounceTime = 2;
-const renderDispatcherFor = (component: IReactContainer) => {
+const renderDispatcherFor = (component: IRefraxContainerComponent) => {
   let timeout: NodeJS.Timer | null = null;
 
   return (debounced: boolean) => {
@@ -86,7 +94,7 @@ const renderDispatcherFor = (component: IReactContainer) => {
   };
 };
 
-const attachAccessor = (container: IReactContainer, accessor: any) => {
+const attachAccessor = (container: IRefraxContainerComponent, accessor: any) => {
   const componentParams = () =>
     RefraxReactShims.getComponentParams.call(container);
 
@@ -106,7 +114,7 @@ interface IReactAction extends IAction {
   attached?: boolean;
 }
 
-const attachAction = (container: IReactContainer, action: IReactAction) => {
+const attachAction = (container: IRefraxContainerComponent, action: IReactAction) => {
   let refLink: string;
   let refPool: IRefPoolEntry;
 
@@ -158,7 +166,7 @@ const attachAction = (container: IReactContainer, action: IReactAction) => {
   return action;
 };
 
-function attach(this: IReactContainer, target: SchemaPath | IAction): Resource | IAction | void {
+function attach(this: IRefraxContainerComponent, target: SchemaPath | IAction): Resource | IAction | void {
   if (target instanceof SchemaPathClass) {
     const resource = attachAccessor(this, target as SchemaPath);
 
@@ -201,59 +209,48 @@ const isReactComponent = (component: any) =>
   );
 
 const refraxify = <P extends {}>(
-  component: ComponentClass<P & IRefraxContainerChildProps>
-): ComponentClass<P & IRefraxContainerChildProps> => {
+  component: ComponentClass<P & RefraxComponentProps>
+): ComponentClass<P & RefraxComponentProps> => {
   class RefraxComponent extends component {
     isLoading = () =>
-      this.props.refraxContainer.isLoading()
+      this.props.refrax.isLoading()
 
     isPending = () =>
-      this.props.refraxContainer.isPending()
+      this.props.refrax.isPending()
 
     hasData = () =>
-      this.props.refraxContainer.hasData()
+      this.props.refrax.hasData()
 
     isStale = () =>
-      this.props.refraxContainer.isStale()
+      this.props.refrax.isStale()
   }
 
   return RefraxComponent;
 };
 
-export interface IRefraxContainerChildProps {
-  ref: string;
-  refraxContainer: IReactContainer;
-}
-
-export interface IRefraxContainerState {
+export interface IRefraxContainerComponentState {
   lastUpdate: number | null;
   attachments: Constants.IKeyValue;
 }
 
-export interface IRefraxInitResult {
-  [key: string]: SchemaPath | IAction;
-}
-
-export type RefraxInitHook<P> = (this: IReactContainer<P>) => IRefraxInitResult;
-
 const _createContainer = <P extends {}>(
   component: ComponentClass<P> | SFC<P>,
-  initHook?: RefraxInitHook<P & IRefraxContainerChildProps>
+  initHook?: RefraxInitHook<P & RefraxComponentProps>
 ): ComponentClass<P> => {
-  let componentAsClass: ComponentClass<P & IRefraxContainerChildProps>;
-  let componentAsSFC: SFC<P & IRefraxContainerChildProps>;
+  let componentAsClass: ComponentClass<P & RefraxComponentProps>;
+  let componentAsSFC: SFC<P & RefraxComponentProps>;
 
   if (isReactComponent(component)) {
-    componentAsClass = refraxify(component as ComponentClass<P & IRefraxContainerChildProps>);
+    componentAsClass = refraxify(component as ComponentClass<P & RefraxComponentProps>);
   }
   else {
-    componentAsSFC = component as SFC<P & IRefraxContainerChildProps>;
+    componentAsSFC = component as SFC<P & RefraxComponentProps>;
   }
 
   const componentName = (component as any).displayName || (component as any).name;
   const containerName = `Refrax(${componentName})`;
 
-  class RefraxContainer extends ReactComponent<P, IRefraxContainerState> implements IReactContainer {
+  class RefraxContainer extends ReactComponent<P, IRefraxContainerComponentState> implements IRefraxContainerComponent {
     _mounted: boolean;
     _disposable: CompoundDisposable;
     _resources: Resource[];
@@ -274,6 +271,7 @@ const _createContainer = <P extends {}>(
     }
 
     componentWillMount(): void {
+      this._mounted = true;
       this.setState(this.initialize());
     }
 
@@ -309,7 +307,7 @@ const _createContainer = <P extends {}>(
         ...this.props,
         ...this.state.attachments,
         ref: 'component',
-        refraxContainer: this
+        refrax: this
       });
     }
 
@@ -367,9 +365,9 @@ const _createContainer = <P extends {}>(
 
 export function createContainer<P>(element: ComponentClass<P>): ComponentClass<P>;
 export function createContainer<P>(element: SFC<P>): ComponentClass<P>;
-export function createContainer<P>(element: ComponentClass<P>, hook?: RefraxInitHook<P & IRefraxContainerChildProps>): ComponentClass<P>;
-export function createContainer<P>(element: SFC<P>, hook?: RefraxInitHook<P & IRefraxContainerChildProps>): ComponentClass<P>;
-export function createContainer<P>(element: ComponentClass<P> | SFC<P>, hook?: RefraxInitHook<P & IRefraxContainerChildProps>): ComponentClass<P> {
+export function createContainer<P>(element: ComponentClass<P>, hook?: RefraxInitHook<P & RefraxComponentProps>): ComponentClass<P>;
+export function createContainer<P>(element: SFC<P>, hook?: RefraxInitHook<P & RefraxComponentProps>): ComponentClass<P>;
+export function createContainer<P>(element: ComponentClass<P> | SFC<P>, hook?: RefraxInitHook<P & RefraxComponentProps>): ComponentClass<P> {
   invariant(isReactComponent(element),
     `invalid argument; expected React Component or Pure Render Function but found \`${element}\``
   );
