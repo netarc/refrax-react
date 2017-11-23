@@ -8,6 +8,7 @@
 import PropTypes from './RefraxReactPropTypes';
 import Shims from './RefraxReactShims';
 
+export * from './RefraxComponent';
 export * from './createContainer';
 export {
   PropTypes,

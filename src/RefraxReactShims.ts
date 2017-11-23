@@ -11,7 +11,7 @@ import { Tools as RefraxTools } from 'refrax';
 
 const RefraxReactShims = {
   contextTypes: {},
-  getComponentParams: function (this: React.Component): object {
+  getComponentParams(this: React.Component): object {
     return RefraxTools.extend({}, this.props);
   }
 };

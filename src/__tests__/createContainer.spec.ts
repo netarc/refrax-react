@@ -5,34 +5,38 @@
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
-import * as React from 'react';
-import { spy, SinonSpy } from 'sinon';
 import { expect } from 'chai';
+import * as React from 'react';
+import { SinonSpy, spy } from 'sinon';
 
 import {
-  mock_reset,
+  delay_for,
+  delay_for_action,
+  delay_for_resource_request,
   mock_get,
   mock_post,
   mock_put,
+  mock_reset,
   mount,
-  mount_cleanup,
-  delay_for,
-  delay_for_action,
-  delay_for_resource_request
+  mount_cleanup
 } from 'test/TestSupport';
 
 import {
   ActionEntity as RefraxActionEntity,
-  Resource as RefraxResource,
-  Tools as RefraxTools,
-  Schema,
+  ActionInvoker,
+  CompoundDisposable,
   Constants as RefraxConstants,
-  createSchemaCollection,
   createAction,
   createSchema,
-  CompoundDisposable
+  createSchemaCollection,
+  Resource as RefraxResource,
+  Schema,
+  Tools as RefraxTools
 } from 'refrax';
-import { createContainer, IReactContainer, IRefraxInitResult } from '../createContainer';
+import { createContainer, IRefraxInitResult } from '../createContainer';
+import { RefraxContainerComponent } from '../RefraxComponent';
+
+// tslint:disable: no-magic-numbers
 
 let schema: Schema;
 
@@ -49,13 +53,13 @@ const dataCollectionUsers2 = [
   dataElement3
 ];
 
-const actionCreateUser = createAction(function(data) {
+const actionCreateUser = createAction(function(this: ActionInvoker, data: object): PromiseLike<object> | Error | void {
   return this
     .mutableFrom(schema.users)
     .create(data);
 });
 
-const actionUpdateUser = createAction(function(data) {
+const actionUpdateUser = createAction(function(this: ActionInvoker, data: object): PromiseLike<object> | Error | void {
   return this
     .mutableFrom(schema.users.user)
     .update(data);
@@ -68,12 +72,15 @@ class TestComponent extends React.Component<{
   _renderPasses: RefraxConstants.IKeyValue[];
 
   // Place holders so we can spy into them
-  componentWillMount() {
+  componentWillMount(): void {
     this._renderPasses = [];
   }
-  componentWillReceiveProps() {}
 
-  render() {
+  componentWillReceiveProps(): void {
+    //
+  }
+
+  render(): React.ReactElement<any> {
     const pass: RefraxConstants.IKeyValue = {};
     RefraxTools.each(this.props, (prop, key) => {
       if (prop instanceof RefraxResource) {
@@ -94,7 +101,7 @@ const TestComponentContainer = createContainer(TestComponent, function(): IRefra
   return this.props.refrax || {};
 });
 
-describe('RefraxContainer', function() {
+describe('RefraxContainer', () => {
   let spyTCC_componentWillMount: SinonSpy;
   let spyTCC_render: SinonSpy;
   let spyTC_componentWillMount: SinonSpy;
@@ -182,7 +189,7 @@ describe('RefraxContainer', function() {
           users: schema.users
         }
       }, null));
-      const wrapperIC_Container = wrapper.instance().refs.component as IReactContainer;
+      const wrapperIC_Container = wrapper.instance().refs.component as RefraxContainerComponent;
       const wrapperIC_Component = wrapper.instance().refs.component as TestComponent;
 
       expect(wrapper.instance().state.attachments)
@@ -264,8 +271,8 @@ describe('RefraxContainer', function() {
         }
       }, null));
       const wrapperIC_Component = wrapper.instance().refs.component as TestComponent;
-
       const userAttachment = wrapper.instance().state.attachments.user;
+
       return delay_for_resource_request(userAttachment)()
         .then(() => {
           // Wrapped component has correct resource state during render
@@ -286,8 +293,8 @@ describe('RefraxContainer', function() {
         }
       }, null));
       const wrapperIC_Component = wrapper.instance().refs.component as TestComponent;
-
       const userAttachment = wrapper.instance().state.attachments.user;
+
       return delay_for_resource_request(userAttachment)()
         .then(() => {
           // Wrapped component has correct resource state during render
@@ -309,8 +316,8 @@ describe('RefraxContainer', function() {
         }
       }, null));
       const wrapperIC_Component = wrapper.instance().refs.component as TestComponent;
-
       const userAttachment = wrapper.instance().state.attachments.user;
+
       return delay_for_resource_request(userAttachment)()
         .then(() => {
           // Wrapped component has correct resource state during render
@@ -334,7 +341,7 @@ describe('RefraxContainer', function() {
         }
       }, null));
       const wrapperIC_Component = wrapper.instance().refs.component as TestComponent;
-      const wrapperIC_Container = wrapper.instance().refs.component as IReactContainer;
+      const wrapperIC_Container = wrapper.instance().refs.component as RefraxContainerComponent;
 
       expect(wrapper.instance().state.attachments)
         .to.have.all.keys([
@@ -702,6 +709,7 @@ describe('RefraxContainer', function() {
           });
 
           mock_put('/users/1', { id: 1, name: 'john doe' });
+
           return updateUserAction({
             name: 'john doe'
           });
