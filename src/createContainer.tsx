@@ -78,9 +78,10 @@ const renderDispatcherFor = (component: IRefraxContainerComponent) => {
 
   return (debounced: boolean) => {
     if (debounced === true) {
-      if (timeout == null) {
+      if (timeout === null) {
         timeout = setTimeout(() => {
-          if (timeout != null) {
+          if (timeout !== null) {
+            timeout = null;
             renderComponent(component);
           }
         }, delayRenderDebounceTime);
