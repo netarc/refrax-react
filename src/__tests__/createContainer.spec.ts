@@ -461,6 +461,56 @@ describe('RefraxContainer', () => {
       expect(onFinish.callCount).to.equal(0);
     });
 
+    describe('when mutated', () => {
+      it('should correctly propagate', () => {
+        const onMutate = spy();
+        const wrapper = mount(React.createElement(TestComponentContainer, {
+          refrax: {
+            createUser: actionCreateUser
+          }
+        }, null));
+
+        expect(wrapper.instance().state.attachments)
+          .to.have.all.keys([
+            'createUser'
+          ])
+          .to.deep.match({
+            createUser: RefraxActionEntity
+          });
+
+        const createUserAction = wrapper.instance().state.attachments.createUser;
+        createUserAction.on('mutated', onMutate);
+
+        resetSpies();
+
+        expect(onMutate.callCount).to.equal(0);
+
+        createUserAction.set('foo', 123);
+
+        return delay_for()()
+          .then(() => {
+            expect(spyTCC_componentWillMount.callCount).to.equal(0);
+            expect(spyTCC_render.callCount).to.equal(1);
+            expect(spyTC_componentWillMount.callCount).to.equal(0);
+            expect(spyTC_componentWillReceiveProps.callCount).to.equal(1);
+            expect(spyTC_render.callCount).to.equal(1);
+            expect(onMutate.callCount).to.equal(1);
+
+            createUserAction.set('bar', 123);
+
+            return delay_for()()
+              .then(() => {
+                expect(spyTCC_componentWillMount.callCount).to.equal(0);
+                expect(spyTCC_render.callCount).to.equal(2);
+                expect(spyTC_componentWillMount.callCount).to.equal(0);
+                expect(spyTC_componentWillReceiveProps.callCount).to.equal(2);
+                expect(spyTC_render.callCount).to.equal(2);
+                expect(onMutate.callCount).to.equal(2);
+              });
+            });
+      });
+    });
+
     describe('when invoked', () => {
       it('should correctly propagate', () => {
         const onStart = spy();
