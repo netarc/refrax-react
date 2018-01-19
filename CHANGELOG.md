@@ -1,10 +1,13 @@
 # Unreleased
 
-## [v0.7.3]
-
-- **Bugfix** `createContainer` dispatcher not properly updating on mutation events after a initial mutation
+## [v0.7.4]
 
 # Released
+
+## [v0.7.3](https://github.com/netarc/refrax/compare/v0.7.2...v0.7.3)
+> January 19, 2018
+
+- **Bugfix** `createContainer` dispatcher not properly updating on mutation events after a initial mutation
 
 ## [v0.7.2](https://github.com/netarc/refrax/compare/v0.7.1...v0.7.2)
 > November 23, 2017
